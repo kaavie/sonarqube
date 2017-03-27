@@ -37,5 +37,5 @@ public class DbVersion64Test {
   public void verify_migration_count() {
     verifyMigrationCount(underTest, 28);
   }
-
 }
+
