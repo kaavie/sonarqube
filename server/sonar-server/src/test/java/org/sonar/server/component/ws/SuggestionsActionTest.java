@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
+import org.assertj.core.groups.Tuple;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -37,6 +38,7 @@ import org.sonar.server.component.index.ComponentIndex;
 import org.sonar.server.component.index.ComponentIndexDefinition;
 import org.sonar.server.component.index.ComponentIndexer;
 import org.sonar.server.es.EsTester;
+import org.sonar.server.es.ProjectIndexer;
 import org.sonar.server.permission.index.AuthorizationTypeSupport;
 import org.sonar.server.permission.index.PermissionIndexerTester;
 import org.sonar.server.tester.UserSessionRule;
@@ -47,6 +49,7 @@ import org.sonarqube.ws.WsComponents.SuggestionsWsResponse;
 
 import static java.util.Optional.ofNullable;
 import static java.util.stream.IntStream.range;
+import static java.util.stream.Stream.of;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.sonar.db.component.ComponentTesting.newProjectDto;
@@ -56,6 +59,9 @@ import static org.sonar.server.component.ws.SuggestionsAction.SHORT_INPUT_WARNIN
 import static org.sonar.server.component.ws.SuggestionsAction.URL_PARAM_MORE;
 import static org.sonar.server.component.ws.SuggestionsAction.URL_PARAM_QUERY;
 import static org.sonarqube.ws.MediaTypes.PROTOBUF;
+import static org.sonarqube.ws.WsComponents.SuggestionsWsResponse.Organization;
+import static org.sonarqube.ws.WsComponents.SuggestionsWsResponse.Category;
+import static org.sonarqube.ws.WsComponents.SuggestionsWsResponse.parseFrom;
 
 public class SuggestionsActionTest {
 
@@ -98,7 +104,7 @@ public class SuggestionsActionTest {
     componentIndexer.indexOnStartup(null);
     authorizationIndexerTester.allowOnlyAnyone(project);
 
-    SuggestionsWsResponse response = SuggestionsWsResponse.parseFrom(actionTester.newRequest()
+    SuggestionsWsResponse response = parseFrom(actionTester.newRequest()
       .setMethod("POST")
       .setMediaType(PROTOBUF)
       .setParam(URL_PARAM_QUERY, project.getKey())
@@ -108,12 +114,12 @@ public class SuggestionsActionTest {
     // assert match in qualifier "TRK"
     assertThat(response.getSuggestionsList())
       .filteredOn(q -> q.getItemsCount() > 0)
-      .extracting(SuggestionsWsResponse.Category::getCategory)
+      .extracting(Category::getCategory)
       .containsExactly(Qualifiers.PROJECT);
 
     // assert correct id to be found
     assertThat(response.getSuggestionsList())
-      .flatExtracting(SuggestionsWsResponse.Category::getItemsList)
+      .flatExtracting(Category::getItemsList)
       .extracting(WsComponents.Component::getKey, WsComponents.Component::getOrganization)
       .containsExactly(tuple(project.getKey(), organization.getKey()));
   }
@@ -125,7 +131,7 @@ public class SuggestionsActionTest {
     componentIndexer.indexOnStartup(null);
     authorizationIndexerTester.allowOnlyAnyone(project);
 
-    SuggestionsWsResponse response = SuggestionsWsResponse.parseFrom(actionTester.newRequest()
+    SuggestionsWsResponse response = parseFrom(actionTester.newRequest()
       .setMethod("POST")
       .setMediaType(PROTOBUF)
       .setParam(URL_PARAM_QUERY, "S o")
@@ -138,7 +144,7 @@ public class SuggestionsActionTest {
 
   @Test
   public void should_warn_about_short_inputs() throws IOException {
-    SuggestionsWsResponse response = SuggestionsWsResponse.parseFrom(actionTester.newRequest()
+    SuggestionsWsResponse response = parseFrom(actionTester.newRequest()
       .setMethod("POST")
       .setMediaType(PROTOBUF)
       .setParam(URL_PARAM_QUERY, "validLongToken x")
@@ -146,6 +152,33 @@ public class SuggestionsActionTest {
       .getInputStream());
 
     assertThat(response.getWarning()).contains(SHORT_INPUT_WARNING);
+  }
+
+  @Test
+  public void should_contain_organization_names() throws IOException {
+    OrganizationDto organization1 = db.organizations().insert(o -> o.setKey("org-1").setName("Organization One"));
+    OrganizationDto organization2 = db.organizations().insert(o -> o.setKey("org-2").setName("Organization Two"));
+
+    ComponentDto project1 = db.components().insertComponent(newProjectDto(organization1).setName("Project1"));
+    componentIndexer.indexProject(project1.projectUuid(), ProjectIndexer.Cause.PROJECT_CREATION);
+    authorizationIndexerTester.allowOnlyAnyone(project1);
+
+    ComponentDto project2 = db.components().insertComponent(newProjectDto(organization2).setName("Project2"));
+    componentIndexer.indexProject(project2.projectUuid(), ProjectIndexer.Cause.PROJECT_CREATION);
+    authorizationIndexerTester.allowOnlyAnyone(project2);
+
+    SuggestionsWsResponse response = parseFrom(actionTester.newRequest()
+      .setMethod("POST")
+      .setMediaType(PROTOBUF)
+      .setParam(URL_PARAM_QUERY, "Project")
+      .execute()
+      .getInputStream());
+
+    assertThat(response.getOrganizationsList())
+      .extracting(Organization::getKey, Organization::getName)
+      .containsExactlyInAnyOrder(
+        of(organization1, organization2)
+          .map(o -> tuple(o.getKey(), o.getName())).toArray(Tuple[]::new));
   }
 
   @Test
@@ -183,25 +216,25 @@ public class SuggestionsActionTest {
       .setMediaType(PROTOBUF)
       .setParam(URL_PARAM_QUERY, namePrefix);
     ofNullable(more).ifPresent(c -> request.setParam(URL_PARAM_MORE, c.getName()));
-    SuggestionsWsResponse response = SuggestionsWsResponse.parseFrom(request
+    SuggestionsWsResponse response = parseFrom(request
       .execute()
       .getInputStream());
 
     // assert match in qualifier "TRK"
     assertThat(response.getSuggestionsList())
       .filteredOn(q -> q.getItemsCount() > 0)
-      .extracting(SuggestionsWsResponse.Category::getCategory)
+      .extracting(Category::getCategory)
       .containsExactly(Qualifiers.PROJECT);
 
     // include limited number of results in the response
     assertThat(response.getSuggestionsList())
-      .flatExtracting(SuggestionsWsResponse.Category::getItemsList)
+      .flatExtracting(Category::getItemsList)
       .hasSize(Math.min(results, numberOfProjects));
 
     // indicate, that there are more results
     assertThat(response.getSuggestionsList())
       .filteredOn(q -> q.getItemsCount() > 0)
-      .extracting(SuggestionsWsResponse.Category::getMore)
+      .extracting(Category::getMore)
       .containsExactly(numberOfMoreResults);
   }
 }

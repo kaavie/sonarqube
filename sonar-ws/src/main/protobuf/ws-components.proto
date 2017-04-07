@@ -50,11 +50,17 @@ message ShowWsResponse {
 message SuggestionsWsResponse {
   repeated Category suggestions = 2;
   optional string warning = 3;
-  
+  repeated Organization organizations = 4;
+
   message Category {
   	optional string category = 1;
   	optional int64 more = 5;
   	repeated Component items = 4;
+  }
+
+  message Organization {
+    optional string key = 1;
+    optional string name = 2;
   }
 }
 
