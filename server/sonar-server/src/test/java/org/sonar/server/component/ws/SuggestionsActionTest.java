@@ -44,14 +44,16 @@ import org.sonar.server.permission.index.PermissionIndexerTester;
 import org.sonar.server.tester.UserSessionRule;
 import org.sonar.server.ws.TestRequest;
 import org.sonar.server.ws.WsActionTester;
-import org.sonarqube.ws.WsComponents;
+import org.sonarqube.ws.WsComponents.Component;
 import org.sonarqube.ws.WsComponents.SuggestionsWsResponse;
+import org.sonarqube.ws.WsComponents.SuggestionsWsResponse.Project;
 
 import static java.util.Optional.ofNullable;
 import static java.util.stream.IntStream.range;
 import static java.util.stream.Stream.of;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.sonar.db.component.ComponentTesting.newModuleDto;
 import static org.sonar.db.component.ComponentTesting.newProjectDto;
 import static org.sonar.server.component.ws.SuggestionsAction.DEFAULT_LIMIT;
 import static org.sonar.server.component.ws.SuggestionsAction.EXTENDED_LIMIT;
@@ -59,8 +61,8 @@ import static org.sonar.server.component.ws.SuggestionsAction.SHORT_INPUT_WARNIN
 import static org.sonar.server.component.ws.SuggestionsAction.URL_PARAM_MORE;
 import static org.sonar.server.component.ws.SuggestionsAction.URL_PARAM_QUERY;
 import static org.sonarqube.ws.MediaTypes.PROTOBUF;
-import static org.sonarqube.ws.WsComponents.SuggestionsWsResponse.Organization;
 import static org.sonarqube.ws.WsComponents.SuggestionsWsResponse.Category;
+import static org.sonarqube.ws.WsComponents.SuggestionsWsResponse.Organization;
 import static org.sonarqube.ws.WsComponents.SuggestionsWsResponse.parseFrom;
 
 public class SuggestionsActionTest {
@@ -120,7 +122,7 @@ public class SuggestionsActionTest {
     // assert correct id to be found
     assertThat(response.getSuggestionsList())
       .flatExtracting(Category::getItemsList)
-      .extracting(WsComponents.Component::getKey, WsComponents.Component::getOrganization)
+      .extracting(Component::getKey, Component::getOrganization)
       .containsExactly(tuple(project.getKey(), organization.getKey()));
   }
 
@@ -179,6 +181,32 @@ public class SuggestionsActionTest {
       .containsExactlyInAnyOrder(
         of(organization1, organization2)
           .map(o -> tuple(o.getKey(), o.getName())).toArray(Tuple[]::new));
+  }
+
+  @Test
+  public void should_contain_project_names() throws IOException {
+    ComponentDto project = db.components().insertComponent(newProjectDto(organization));
+    db.components().insertComponent(newModuleDto(project).setName("Module1"));
+    db.components().insertComponent(newModuleDto(project).setName("Module2"));
+    componentIndexer.indexProject(project.projectUuid(), ProjectIndexer.Cause.PROJECT_CREATION);
+    authorizationIndexerTester.allowOnlyAnyone(project);
+
+    SuggestionsWsResponse response = parseFrom(actionTester.newRequest()
+      .setMethod("POST")
+      .setMediaType(PROTOBUF)
+      .setParam(URL_PARAM_QUERY, "Module")
+      .execute()
+      .getInputStream());
+
+    assertThat(response.getSuggestionsList())
+      .flatExtracting(Category::getItemsList)
+      .extracting(Component::getProject)
+      .containsOnly(project.key());
+
+    assertThat(response.getProjectsList())
+      .extracting(Project::getKey, Project::getName)
+      .containsExactlyInAnyOrder(
+        tuple(project.key(), project.longName()));
   }
 
   @Test
