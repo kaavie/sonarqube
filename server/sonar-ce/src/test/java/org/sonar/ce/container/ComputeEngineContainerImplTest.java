@@ -22,6 +22,7 @@ package org.sonar.ce.container;
 import com.hazelcast.core.HazelcastInstance;
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.Date;
 import java.util.Properties;
 import java.util.stream.Collectors;
@@ -73,7 +74,7 @@ public class ComputeEngineContainerImplTest {
 
   @Test
   public void real_start_with_cluster() throws IOException {
-    int port = NetworkUtils.freePort();
+    int port = NetworkUtils.getNextAvailablePort(InetAddress.getLoopbackAddress());
     HazelcastInstance hzInstance = HazelcastTestHelper.createHazelcastCluster(CLUSTER_NAME, port);
 
     Properties properties = getProperties();
@@ -114,7 +115,7 @@ public class ComputeEngineContainerImplTest {
     assertThat(picoContainer.getComponentAdapters())
       .hasSize(
         CONTAINER_ITSELF
-          + 73 // level 4
+          + 74 // level 4
           + 4 // content of CeConfigurationModule
           + 4 // content of CeQueueModule
           + 3 // content of CeHttpModule

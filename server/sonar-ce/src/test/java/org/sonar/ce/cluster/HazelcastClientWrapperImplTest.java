@@ -26,6 +26,7 @@ import ch.qos.logback.core.AppenderBase;
 import com.hazelcast.client.impl.HazelcastClientInstanceImpl;
 import com.hazelcast.client.impl.HazelcastClientProxy;
 import com.hazelcast.core.HazelcastInstance;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -64,7 +65,7 @@ public class HazelcastClientWrapperImplTest {
 
   @BeforeClass
   public static void setupHazelcastClusterAndHazelcastClient() {
-    int port = NetworkUtils.freePort();
+    int port = NetworkUtils.getNextAvailablePort(InetAddress.getLoopbackAddress());
     hzCluster = HazelcastTestHelper.createHazelcastCluster("cluster_with_client", port);
 
     Settings settings = createClusterSettings("cluster_with_client", "localhost:" + port);
@@ -152,7 +153,7 @@ public class HazelcastClientWrapperImplTest {
 
   @Test
   public void client_must_connect_to_hazelcast() {
-    int port = NetworkUtils.freePort();
+    int port = NetworkUtils.getNextAvailablePort(InetAddress.getLoopbackAddress());
     // Launch a fake Hazelcast instance
     HazelcastInstance hzInstance = HazelcastTestHelper.createHazelcastCluster("client_must_connect_to_hazelcast", port);
     Settings settings = createClusterSettings("client_must_connect_to_hazelcast", "localhost:" + port);

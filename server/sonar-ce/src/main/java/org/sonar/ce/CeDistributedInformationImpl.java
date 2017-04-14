@@ -26,7 +26,7 @@ import org.picocontainer.Startable;
 import org.sonar.ce.cluster.HazelcastClientWrapper;
 import org.sonar.ce.taskprocessor.CeWorkerFactory;
 
-import static org.sonar.core.util.stream.Collectors.toSet;
+import static org.sonar.core.util.stream.MoreCollectors.toSet;
 import static org.sonar.process.cluster.ClusterObjectKeys.WORKER_UUIDS;
 
 /**
