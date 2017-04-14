@@ -25,8 +25,6 @@ import org.sonar.db.measure.MeasureDto;
 import org.sonar.db.metric.MetricDto;
 import org.sonarqube.ws.WsMeasures.Component;
 
-import static org.sonar.server.measure.ws.MeasureDtoToWsMeasure.measureDtoToWsMeasure;
-
 class ComponentDtoToWsComponent {
   private ComponentDtoToWsComponent() {
     // static methods only
@@ -43,7 +41,7 @@ class ComponentDtoToWsComponent {
     }
 
     for (Map.Entry<MetricDto, MeasureDto> entry : measuresByMetric.entrySet()) {
-      wsComponent.addMeasures(measureDtoToWsMeasure(entry.getKey(), entry.getValue()));
+      wsComponent.addMeasures(MeasureDtoToWsMeasure.createWsMeasureBuilder(entry.getKey(), entry.getValue()));
     }
 
     return wsComponent;

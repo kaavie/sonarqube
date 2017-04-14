@@ -37,7 +37,7 @@ class ComponentTreeData {
   private final Map<String, ComponentDto> referenceComponentsByUuid;
   private final List<MetricDto> metrics;
   private final List<WsMeasures.Period> periods;
-  private final Table<String, MetricDto, MeasureDto> measuresByComponentUuidAndMetric;
+  private final Table<String, MetricDto, Measure> measuresByComponentUuidAndMetric;
 
   private ComponentTreeData(Builder builder) {
     this.baseComponent = builder.baseComponent;
@@ -79,7 +79,7 @@ class ComponentTreeData {
   }
 
   @CheckForNull
-  Table<String, MetricDto, MeasureDto> getMeasuresByComponentUuidAndMetric() {
+  Table<String, MetricDto, Measure> getMeasuresByComponentUuidAndMetric() {
     return measuresByComponentUuidAndMetric;
   }
 
@@ -94,7 +94,7 @@ class ComponentTreeData {
     private int componentCount;
     private List<MetricDto> metrics;
     private List<WsMeasures.Period> periods;
-    private Table<String, MetricDto, MeasureDto> measuresByComponentUuidAndMetric;
+    private Table<String, MetricDto, Measure> measuresByComponentUuidAndMetric;
 
     private Builder() {
       // private constructor
@@ -125,7 +125,7 @@ class ComponentTreeData {
       return this;
     }
 
-    public Builder setMeasuresByComponentUuidAndMetric(Table<String, MetricDto, MeasureDto> measuresByComponentUuidAndMetric) {
+    public Builder setMeasuresByComponentUuidAndMetric(Table<String, MetricDto, Measure> measuresByComponentUuidAndMetric) {
       this.measuresByComponentUuidAndMetric = measuresByComponentUuidAndMetric;
       return this;
     }
@@ -138,6 +138,37 @@ class ComponentTreeData {
     public ComponentTreeData build() {
       requireNonNull(baseComponent);
       return new ComponentTreeData(this);
+    }
+  }
+
+  static class Measure {
+    private Double value;
+    private String data;
+    private Double variation;
+
+    private Measure(MeasureDto measureDto) {
+      this.value = measureDto.getValue();
+      this.data = measureDto.getData();
+      this.variation = measureDto.getVariation();
+    }
+
+    @CheckForNull
+    public Double getValue() {
+      return value;
+    }
+
+    @CheckForNull
+    public String getData() {
+      return data;
+    }
+
+    @CheckForNull
+    public Double getVariation() {
+      return variation;
+    }
+
+    static Measure createFromMeasureDto(MeasureDto measureDto) {
+      return new Measure(measureDto);
     }
   }
 }

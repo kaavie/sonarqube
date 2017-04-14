@@ -46,7 +46,7 @@ import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toMap;
 import static org.sonar.core.util.stream.Collectors.toList;
 import static org.sonar.core.util.stream.Collectors.uniqueIndex;
-import static org.sonar.server.measure.ws.MeasureDtoToWsMeasure.dbToWsMeasure;
+import static org.sonar.server.measure.ws.MeasureDtoToWsMeasure.createWsMeasureBuilder;
 import static org.sonar.server.measure.ws.MeasuresWsParametersBuilder.createMetricKeysParameter;
 import static org.sonar.server.ws.KeyExamples.KEY_PROJECT_EXAMPLE_001;
 import static org.sonar.server.ws.KeyExamples.KEY_PROJECT_EXAMPLE_002;
@@ -189,7 +189,9 @@ public class SearchAction implements MeasuresWsAction {
       Function<Measure, String> byComponentName = wsMeasure -> componentNamesByKey.get(wsMeasure.getComponent());
 
       return measures.stream()
-        .map(dbMeasure -> dbToWsMeasure(dbMeasure, dbMeasureToDbMetric.apply(dbMeasure), componentsByUuid.get(dbMeasure.getComponentUuid())))
+        .map(dbMeasure -> createWsMeasureBuilder(dbMeasureToDbMetric.apply(dbMeasure), dbMeasure)
+          .setComponent(componentsByUuid.get(dbMeasure.getComponentUuid()).getKey())
+          .build())
         .sorted(comparing(byMetricKey).thenComparing(byComponentName))
         .collect(toList());
     }

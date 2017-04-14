@@ -19,6 +19,7 @@
  */
 package org.sonar.server.measure.ws;
 
+import javax.annotation.Nullable;
 import org.sonar.api.measures.Metric;
 import org.sonar.db.measure.MeasureDto;
 import org.sonar.db.metric.MetricDto;
@@ -31,10 +32,13 @@ class MeasureValueFormatter {
   }
 
   static String formatMeasureValue(MeasureDto measure, MetricDto metric) {
-    Metric.ValueType metricType = Metric.ValueType.valueOf(metric.getValueType());
     Double doubleValue = measure.getValue();
     String stringValue = measure.getData();
+    return formatMeasureValue(doubleValue, stringValue, metric);
+  }
 
+  static String formatMeasureValue(@Nullable Double doubleValue, @Nullable String stringValue, MetricDto metric) {
+    Metric.ValueType metricType = Metric.ValueType.valueOf(metric.getValueType());
     switch (metricType) {
       case BOOL:
         return formatBoolean(doubleValue);

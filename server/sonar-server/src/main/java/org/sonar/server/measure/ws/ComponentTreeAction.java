@@ -48,6 +48,7 @@ import static org.sonar.core.util.Uuids.UUID_EXAMPLE_02;
 import static org.sonar.db.component.ComponentTreeQuery.Strategy.CHILDREN;
 import static org.sonar.db.component.ComponentTreeQuery.Strategy.LEAVES;
 import static org.sonar.server.measure.ws.ComponentDtoToWsComponent.componentDtoToWsComponent;
+import static org.sonar.server.measure.ws.MeasureDtoToWsMeasure.createWsMeasureBuilder;
 import static org.sonar.server.measure.ws.MeasuresWsParametersBuilder.createAdditionalFieldsParameter;
 import static org.sonar.server.measure.ws.MeasuresWsParametersBuilder.createDeveloperParameters;
 import static org.sonar.server.measure.ws.MeasuresWsParametersBuilder.createMetricKeysParameter;
@@ -223,13 +224,13 @@ public class ComponentTreeAction implements MeasuresWsAction {
       .build();
 
     response.setBaseComponent(
-      componentDtoToWsComponent(
+      toWsComponent(
         data.getBaseComponent(),
         data.getMeasuresByComponentUuidAndMetric().row(data.getBaseComponent().uuid()),
         data.getReferenceComponentsByUuid()));
 
     for (ComponentDto componentDto : data.getComponents()) {
-      response.addComponents(componentDtoToWsComponent(
+      response.addComponents(toWsComponent(
         componentDto,
         data.getMeasuresByComponentUuidAndMetric().row(componentDto.uuid()),
         data.getReferenceComponentsByUuid()));
@@ -306,4 +307,20 @@ public class ComponentTreeAction implements MeasuresWsAction {
       Param.SORT, METRIC_SORT, METRIC_PERIOD_SORT, PARAM_METRIC_SORT);
     return componentTreeWsRequest;
   }
+
+  private static WsMeasures.Component.Builder toWsComponent(ComponentDto component, Map<MetricDto, ComponentTreeData.Measure> measures,
+    Map<String, ComponentDto> referenceComponentsByUuid) {
+    WsMeasures.Component.Builder wsComponent = componentDtoToWsComponent(component);
+    ComponentDto referenceComponent = referenceComponentsByUuid.get(component.getCopyResourceUuid());
+    if (referenceComponent != null) {
+      wsComponent.setRefId(referenceComponent.uuid());
+      wsComponent.setRefKey(referenceComponent.key());
+    }
+    for (Map.Entry<MetricDto, ComponentTreeData.Measure> entry : measures.entrySet()) {
+      ComponentTreeData.Measure measure = entry.getValue();
+      wsComponent.addMeasures(createWsMeasureBuilder(entry.getKey(), measure.getValue(), measure.getData(), measure.getVariation()));
+    }
+    return wsComponent;
+  }
+
 }
