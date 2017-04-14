@@ -78,7 +78,7 @@ public class CreateAction implements RulesWsAction {
       .createAction("create")
       .setDescription("Create a custom rule. <br/>" +
         "Since 5.5, it's no more possible to create manual rule." +
-        "Custom rules are currently not supported, if the organization feature is enabled. In that case, the webservice will fail.")
+        "Custom rules are not supported if the organization feature is enabled.")
       .setSince("4.4")
       .setPost(true)
       .setHandler(this);
