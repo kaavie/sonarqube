@@ -41,4 +41,15 @@ public interface CeConfiguration {
    * Delay between the end of a run and the start of the next one of the job that cancels worn out CE tasks (in minutes).
    */
   long getCancelWornOutsDelay();
+
+  /**
+   * Delay before running job that reset tasks that does not have an existing worker UUID (in minutes).
+   */
+  long getTasksWithUnknownWorkerUUIDsInitialDelay();
+
+  /**
+   * Delay between the end of a run and the start of the next one of the job that reset tasks that does not have
+   * an existing worker UUID (in minutes).
+   */
+  long getTasksWithUnknownWorkerUUIDsDelay();
 }
