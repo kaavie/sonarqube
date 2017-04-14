@@ -19,6 +19,7 @@
  */
 package org.sonar.ce.cleaning;
 
+import java.util.concurrent.locks.Lock;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonar.ce.CeDistributedInformation;
@@ -26,6 +27,7 @@ import org.sonar.ce.configuration.CeConfiguration;
 import org.sonar.ce.queue.InternalCeQueue;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
+import static org.sonar.process.cluster.ClusterObjectKeys.CE_CLEANING_JOB_LOCK;
 
 public class CeCleaningSchedulerImpl implements CeCleaningScheduler {
   private static final Logger LOG = Loggers.get(CeCleaningSchedulerImpl.class);
@@ -56,20 +58,36 @@ public class CeCleaningSchedulerImpl implements CeCleaningScheduler {
   }
 
   private void cancelWornOuts() {
-    try {
-      LOG.info("Deleting any worn out task");
-      internalCeQueue.cancelWornOuts();
-    } catch (Exception e) {
-      LOG.warn("Failed to cancel worn out tasks", e);
+    Lock ceCleaningJobLock = ceDistributedInformation.acquireLock(CE_CLEANING_JOB_LOCK);
+
+    // If we cannot lock that means that another job is running
+    // So we skip the cancelWornOuts() method
+    if (ceCleaningJobLock.tryLock()) {
+      try {
+        LOG.info("Deleting any worn out task");
+        internalCeQueue.cancelWornOuts();
+      } catch (Exception e) {
+        LOG.warn("Failed to cancel worn out tasks", e);
+      } finally {
+        ceCleaningJobLock.unlock();
+      }
     }
   }
 
   private void resetTasksWithUnknownWorkerUUIDs() {
-    try {
-      LOG.info("Resetting state of tasks with unknown worker UUIDs");
-      internalCeQueue.resetTasksWithUnknownWorkerUUIDs(ceDistributedInformation.getWorkerUUIDs());
-    } catch (Exception e) {
-      LOG.warn("Failed to reset tasks with unknwon worker UUIDs", e);
+    Lock ceCleaningJobLock = ceDistributedInformation.acquireLock(CE_CLEANING_JOB_LOCK);
+
+    // If we cannot lock that means that another job is running
+    // So we skip the resetTasksWithUnknownWorkerUUIDs() method
+    if (ceCleaningJobLock.tryLock()) {
+      try {
+        LOG.info("Resetting state of tasks with unknown worker UUIDs");
+        internalCeQueue.resetTasksWithUnknownWorkerUUIDs(ceDistributedInformation.getWorkerUUIDs());
+      } catch (Exception e) {
+        LOG.warn("Failed to reset tasks with unknwon worker UUIDs", e);
+      } finally {
+        ceCleaningJobLock.unlock();
+      }
     }
   }
 }
